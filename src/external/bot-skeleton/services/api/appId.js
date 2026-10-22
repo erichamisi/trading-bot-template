@@ -1,3 +1,4 @@
+import { assertDigitLabOutboundRequestAllowed } from '@/services/digitlab-outbound-policy';
 import { getSocketURL } from '@/components/shared';
 import DerivAPIBasic from '@deriv/deriv-api/dist/DerivAPIBasic';
 import APIMiddleware from './api-middleware';
@@ -73,8 +74,15 @@ export const generateDerivApiInstance = async (forceNew = false) => {
 
             currentWebSocketURL = wsURL;
 
-            console.log('[DerivAPI] Creating new WebSocket connection to:', wsURL);
+            // Never log the authenticated WebSocket URL: it may contain a short-lived OTP.
+            console.log('[DerivAPI] Creating new WebSocket connection');
             const deriv_socket = new WebSocket(wsURL);
+            // Fail-closed at the socket boundary, including SDK calls and retries.
+            const originalSend = deriv_socket.send.bind(deriv_socket);
+            deriv_socket.send = payload => {
+                assertDigitLabOutboundRequestAllowed(payload);
+                return originalSend(payload);
+            };
             const deriv_api = new DerivAPIBasic({
                 connection: deriv_socket,
                 middleware: new APIMiddleware({}),
