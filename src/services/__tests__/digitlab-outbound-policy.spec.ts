@@ -6,6 +6,12 @@ describe('DigitLab WebSocket transport safeguard', () => {
         '{"buy":1}',
         '{"buy_contract_for":"x"}',
         '{"purchase":1}',
+        '{"sell":1}',
+        '{"cancel":1}',
+        '{"contract_update":1}',
+        '{"transfer_between_accounts":1}',
+        '{"cashier":"withdraw"}',
+        '{"buy":null}',
     ])('blocks purchase-shaped request %s', payload => {
         expect(() => assertDigitLabOutboundRequestAllowed(payload)).toThrow(/blocked/);
     });
