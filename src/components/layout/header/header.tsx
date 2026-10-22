@@ -69,19 +69,19 @@ const AppHeader = observer(() => {
         if (isOAuthPending) return;
 
         const timer = setTimeout(() => {
-            if (isAuthorizing && !activeLoginid) {
+            if ((isAuthorizing || is_account_regenerating) && !activeLoginid) {
                 setAuthTimeout(true);
                 setIsAuthorizing(false);
             }
         }, 5000);
 
-        if (activeLoginid || !isAuthorizing) {
+        if (activeLoginid || (!isAuthorizing && !is_account_regenerating)) {
             if (authTimeout) setAuthTimeout(false);
             clearTimeout(timer);
         }
 
         return () => clearTimeout(timer);
-    }, [isAuthorizing, activeLoginid, setIsAuthorizing, authTimeout, isOAuthPending]);
+    }, [isAuthorizing, activeLoginid, setIsAuthorizing, authTimeout, isOAuthPending, is_account_regenerating]);
 
     const handleSignup = useCallback(async () => {
         try {
@@ -133,7 +133,7 @@ const AppHeader = observer(() => {
     const renderAccountSection = useCallback(
         (position: 'left' | 'right' = 'right') => {
             // Show account switcher and logout when user is fully authenticated
-            if (activeLoginid && !is_account_regenerating) {
+            if (activeLoginid && !is_account_regenerating && !authTimeout) {
                 if (position === 'left' && !isDesktop) {
                     // For mobile left section - only account switcher
                     return (
@@ -167,7 +167,7 @@ const AppHeader = observer(() => {
             else if (
                 position === 'right' &&
                 !isOAuthPending &&
-                ((!is_account_regenerating && !isAuthorizing && !activeLoginid) || authTimeout)
+                (authTimeout || (!is_account_regenerating && !isAuthorizing && !activeLoginid))
             ) {
                 return (
                     <div className='auth-actions'>
