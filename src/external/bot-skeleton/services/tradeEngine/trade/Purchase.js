@@ -1,3 +1,4 @@
+import { authoriseDigitLabTrade } from '@/services/digitlab-trading-policy';
 import { LogTypes } from '../../../constants/messages';
 import { api_base } from '../../api/api-base';
 import { contractStatus, info, log } from '../utils/broadcast';
@@ -10,7 +11,24 @@ let purchase_reference;
 
 export default Engine =>
     class Purchase extends Engine {
+        assertDigitLabDemoPermission() {
+            // Fail closed. Explicit demo-run confirmation has not yet been wired to
+            // a trusted workflow, so no purchase may be submitted in this phase.
+            const confirmedLoginid = api_base.account_info?.loginid;
+            const engineLoginid = this.accountInfo?.loginid;
+            const sameAccount = Boolean(confirmedLoginid && engineLoginid && confirmedLoginid === engineLoginid);
+            const isDemoId = sameAccount && /^(VRTC|VRW|DEM|DOT)/.test(confirmedLoginid);
+            const permission = authoriseDigitLabTrade({
+                accountType: isDemoId ? 'demo' : 'unknown',
+                isAuthenticated: Boolean(api_base.is_authorized && sameAccount),
+                userConfirmedDemoRun: false,
+            });
+            if (!permission.allowed) {
+                throw new Error('DigitLab purchase blocked: ' + permission.reason);
+            }
+        }
         purchase(contract_type) {
+            this.assertDigitLabDemoPermission();
             // Prevent calling purchase twice
             if (this.store.getState().scope !== BEFORE_PURCHASE) {
                 return Promise.resolve();
@@ -47,7 +65,10 @@ export default Engine =>
             if (this.is_proposal_subscription_required) {
                 const { id, askPrice } = this.selectProposal(contract_type);
 
-                const action = () => api_base.api.send({ buy: id, price: askPrice });
+                const action = () => {
+                    this.assertDigitLabDemoPermission();
+                    return api_base.api.send({ buy: id, price: askPrice });
+                };
 
                 this.isSold = false;
 
@@ -83,7 +104,10 @@ export default Engine =>
                 ).then(onSuccess);
             }
             const trade_option = tradeOptionToBuy(contract_type, this.tradeOptions);
-            const action = () => api_base.api.send(trade_option);
+            const action = () => {
+                this.assertDigitLabDemoPermission();
+                return api_base.api.send(trade_option);
+            };
 
             this.isSold = false;
 
