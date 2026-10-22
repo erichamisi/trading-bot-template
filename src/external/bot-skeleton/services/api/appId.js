@@ -74,7 +74,8 @@ export const generateDerivApiInstance = async (forceNew = false) => {
 
             currentWebSocketURL = wsURL;
 
-            console.log('[DerivAPI] Creating new WebSocket connection to:', wsURL);
+            // Never log the authenticated WebSocket URL: it may contain a short-lived OTP.
+            console.log('[DerivAPI] Creating new WebSocket connection');
             const deriv_socket = new WebSocket(wsURL);
             // Fail-closed at the socket boundary, including SDK calls and retries.
             const originalSend = deriv_socket.send.bind(deriv_socket);
