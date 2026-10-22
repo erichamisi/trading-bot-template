@@ -68,8 +68,24 @@ export const getSocketURL = async (): Promise<string> => {
         }
 
         // Use the DerivWSAccountsService to get authenticated WebSocket URL
-        const wsUrl = await DerivWSAccountsService.getAuthenticatedWebSocketURL(authInfo.access_token);
-        return wsUrl;
+        // Bound the OTP/WebSocket URL lookup so a stalled upstream call cannot
+        // hold the UI's initial socket setup indefinitely.
+        let timeoutId: ReturnType<typeof setTimeout> | undefined;
+        try {
+            const timeout = new Promise<never>((_, reject) => {
+                timeoutId = setTimeout(() => reject(new Error('Deriv WebSocket URL lookup timed out')), 10000);
+            });
+            const wsUrl = await Promise.race([
+                DerivWSAccountsService.getAuthenticatedWebSocketURL(authInfo.access_token),
+                timeout,
+            ]);
+            if (!wsUrl || typeof wsUrl !== 'string') {
+                throw new Error('Deriv returned an invalid WebSocket URL');
+            }
+            return wsUrl;
+        } finally {
+            if (timeoutId !== undefined) clearTimeout(timeoutId);
+        }
     } catch (error) {
         console.error('[DerivWS] Error in getSocketURL:', error);
         return getDefaultServerURL();
