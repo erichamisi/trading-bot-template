@@ -1,26 +1,30 @@
 /**
- * Preview-phase outbound transport gate.
- * No purchase traffic is authorised until all authenticated demo controls are wired.
+ * DigitLab preview transport guard.
+ * All account-mutating operations remain blocked until reviewed demo-only flow.
+ * Browser-side guard only: it does not replace server-side authorisation.
  */
+const RESTRICTED_METHODS = [
+    'buy', 'buy_contract_for', 'purchase', 'sell', 'cancel',
+    'contract_update', 'cashier', 'paymentagent_transfer',
+    'transfer_between_accounts', 'p2p_order_create',
+] as const;
+
 export function assertDigitLabOutboundRequestAllowed(payload: unknown): void {
-    // Never let uninspectable payloads pass silently.
     if (typeof payload !== 'string') {
         throw new Error('DigitLab: unsupported outbound WebSocket payload blocked');
     }
-    let request: unknown;
+    let parsed: unknown;
     try {
-        request = JSON.parse(payload);
+        parsed = JSON.parse(payload);
     } catch {
         throw new Error('DigitLab: unparseable outbound WebSocket payload blocked');
     }
-    if (typeof request !== 'object' || request === null || Array.isArray(request)) {
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
         throw new Error('DigitLab: invalid outbound WebSocket request blocked');
     }
-    const fields = request as Record<string, unknown>;
-    // Fail closed on trade-creation methods. Never rely on client UI toggles.
-    if (Object.prototype.hasOwnProperty.call(fields, 'buy') ||
-        Object.prototype.hasOwnProperty.call(fields, 'buy_contract_for') ||
-        Object.prototype.hasOwnProperty.call(fields, 'purchase')) {
-        throw new Error('DigitLab: outbound contract purchase blocked pending demo verification');
+    const request = parsed as Record<string, unknown>;
+    // Only accept own request fields; a mutation may have a falsy value.
+    if (RESTRICTED_METHODS.some(key => Object.prototype.hasOwnProperty.call(request, key))) {
+        throw new Error('DigitLab: account-modifying request blocked pending demo verification');
     }
 }
