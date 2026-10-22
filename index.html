@@ -52,6 +52,44 @@
         <div id="modal_root" class="modal-root"></div>
         <div id="popup_root" class="popup-root"></div>
         <div id="root"></div>
+        <script>
+            // Independent recovery UI for a failed initial React/Deriv account bootstrap.
+            (function () {
+                var started = Date.now();
+                var dismissed = false;
+                function check() {
+                    if (dismissed || document.getElementById('digitlab-startup-recovery')) return;
+                    var text = (document.body && document.body.innerText || '').toLowerCase();
+                    var root = document.getElementById('root');
+                    var initializing = /initializing deriv bot account|getting your account ready/.test(text);
+                    var blank = root && !root.textContent.trim();
+                    if ((initializing || blank) && Date.now() - started >= 15000) {
+                        var panel = document.createElement('div');
+                        panel.id = 'digitlab-startup-recovery';
+                        panel.setAttribute('role', 'alert');
+                        panel.style.cssText = 'position:fixed;bottom:16px;left:16px;right:16px;z-index:2147483647;padding:16px;background:#151515;color:#f5e9c2;border:1px solid #d4af37;border-radius:10px;box-shadow:0 8px 30px #0009;font:14px/1.5 system-ui,sans-serif;max-width:520px;margin:auto';
+                        var title = document.createElement('strong');
+                        title.textContent = 'DigitLab could not finish account initialisation';
+                        var detail = document.createElement('p');
+                        detail.textContent = 'The bot has not connected successfully. Trading remains disabled. Try reloading, or open a fresh private window if the problem persists.';
+                        var retry = document.createElement('button');
+                        retry.type = 'button';
+                        retry.textContent = 'Reload application';
+                        retry.style.cssText = 'padding:9px 12px;background:#d4af37;color:#111;border:0;border-radius:6px;cursor:pointer';
+                        retry.onclick = function () { window.location.reload(); };
+                        var close = document.createElement('button');
+                        close.type = 'button';
+                        close.textContent = 'Dismiss';
+                        close.style.cssText = 'padding:9px 12px;margin-left:9px;background:transparent;color:#f5e9c2;border:1px solid #9c7a19;border-radius:6px;cursor:pointer';
+                        close.onclick = function () { dismissed = true; panel.remove(); };
+                        panel.append(title, detail, retry, close);
+                        document.body.appendChild(panel);
+                    }
+                }
+                window.setInterval(check, 3000);
+            })();
+        </script>
+
         <!-- LiveChat script -->
         <script type="text/javascript" defer>
             window.__lc = window.__lc || {};
