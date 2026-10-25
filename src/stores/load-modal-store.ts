@@ -547,7 +547,7 @@ export default class LoadModalStore {
             }
             const convertedDom = window.Blockly?.utils?.xml?.textToDom(this.selected_strategy?.xml);
             // Keep the recent-strategy preview isolated from the active trading workspace.
-            // Using getMainWorkspace() here could overwrite the user's bot editor.
+            // Do not select the active editor as the destination for preview XML.
             window.Blockly?.Xml?.clearWorkspaceAndLoadFromXml(convertedDom, this.recent_workspace);
         }
         setLoading(false);
