@@ -35,7 +35,12 @@ export const isProduction = () => {
 
 export const isLocal = () => /localhost(:\d+)?$/i.test(window.location.hostname);
 
+// The preview's unauthenticated feed uses Deriv's documented public WSS
+// endpoint. It provides live market data without account privileges.
+export const DIGITLAB_PUBLIC_MARKET_WS = 'wss://api.derivws.com/trading/v1/options/ws/public';
+
 const getDefaultServerURL = () => {
+    if (!isProduction()) return DIGITLAB_PUBLIC_MARKET_WS;
     const isProductionEnv = isProduction();
 
     try {
