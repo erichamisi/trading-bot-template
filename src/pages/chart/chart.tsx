@@ -3,7 +3,8 @@ import classNames from 'classnames';
 import { observer } from 'mobx-react-lite';
 /* [AI] - Analytics removed - rudderstack event tracking removed */
 /* [/AI] */
-import ChunkLoader from '@/components/loader/chunk-loader';
+import { useApiBase } from '@/hooks/useApiBase';
+import { CONNECTION_STATUS } from '@/external/bot-skeleton/services/api/observables/connection-status-stream';
 import chart_api from '@/external/bot-skeleton/services/api/chart-api';
 import { useSmartChartAdaptor } from '@/hooks/useSmartChartAdaptor';
 import { useStore } from '@/hooks/useStore';
@@ -15,6 +16,7 @@ import '@deriv-com/smartcharts-champion/dist/smartcharts.css';
 const Chart = observer(({ show_digits_stats }: { show_digits_stats: boolean }) => {
     const barriers: [] = [];
     const { common, ui } = useStore();
+    const { connectionStatus } = useApiBase();
     const { chart_store, run_panel, dashboard } = useStore();
     const [isSafari, setIsSafari] = useState(false);
 
@@ -62,7 +64,7 @@ const Chart = observer(({ show_digits_stats }: { show_digits_stats: boolean }) =
         setIsSafari(isSafariBrowser());
 
         return () => {
-            chart_api.api.forgetAll('ticks');
+            chart_api.api?.forgetAll?.('ticks');
         };
     }, []);
 
@@ -81,8 +83,15 @@ const Chart = observer(({ show_digits_stats }: { show_digits_stats: boolean }) =
         }
     };
 
-    if (!symbol || chartData.activeSymbols.length === 0) {
-        return <ChunkLoader message='' />;
+    if (connectionStatus !== CONNECTION_STATUS.OPENED || !symbol || chartData.activeSymbols.length === 0) {
+        return (
+            <div role='status' data-testid='digitlab-chart-offline' style={{ padding: '32px', textAlign: 'center', color: 'var(--text-general, #444)' }}>
+                <h3>Market chart unavailable</h3>
+                <p>Market data is not connected. Charts will be available when Deriv market data reconnects.</p>
+                <p>Strategy editing is separate; trading remains disabled in this preview.</p>
+                <button type='button' onClick={() => window.location.reload()}>Retry connection</button>
+            </div>
+        );
     }
 
     return (
