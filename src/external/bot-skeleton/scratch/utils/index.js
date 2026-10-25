@@ -1,3 +1,4 @@
+import { assertSafeDbotXmlText } from '@/services/digitlab-xml-import-policy';
 import { botNotification } from '@/components/bot-notification/bot-notification';
 import { notification_message } from '@/components/bot-notification/bot-notification-utils';
 import { getCurrencyDisplayCode } from '@/components/shared';
@@ -163,6 +164,14 @@ export const load = async ({
             error: error_message,
         };
     };
+
+    // Apply the same fail-closed text checks to local, recent and Drive strategies.
+    // Keep the legacy conversion pipeline behind the validation boundary.
+    try {
+        assertSafeDbotXmlText(block_string);
+    } catch (error) {
+        return showInvalidStrategyError();
+    }
 
     // Check if XML can be parsed correctly.
     try {
