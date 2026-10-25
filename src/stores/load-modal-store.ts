@@ -495,6 +495,11 @@ export default class LoadModalStore {
 
     updateXmlValuesOnStrategySelection = () => {
         if (this.recent_strategies.length === 0) return;
+        try {
+            assertSafeDbotXmlText(this.selected_strategy?.xml);
+        } catch {
+            return;
+        }
         updateXmlValues({
             strategy_id: this.selected_strategy_id,
             convertedDom: window?.Blockly?.utils?.xml?.textToDom(this.selected_strategy?.xml),
@@ -522,6 +527,13 @@ export default class LoadModalStore {
             if (!this.recent_workspace) this.recent_workspace = window.Blockly.inject(ref_preview, inject_options);
             (this.recent_workspace as any).RTL = isDbotRTL();
 
+            try {
+                assertSafeDbotXmlText(this.selected_strategy?.xml);
+            } catch {
+                setLoading(false);
+                this.setOpenButtonDisabled(false);
+                return;
+            }
             const convertedDom = window.Blockly?.utils?.xml?.textToDom(this.selected_strategy?.xml);
             const mainWorkspace = window.Blockly?.getMainWorkspace();
 
