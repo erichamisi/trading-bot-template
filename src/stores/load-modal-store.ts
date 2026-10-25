@@ -1,4 +1,5 @@
 import React from 'react';
+import { assertSafeDbotXmlFile, assertSafeDbotXmlText } from '@/services/digitlab-xml-import-policy';
 import { action, computed, makeObservable, observable, reaction } from 'mobx';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -413,18 +414,22 @@ export default class LoadModalStore {
             ({ files } = event.target);
         }
 
-        const [file] = files;
+        const [file] = files || [];
+        try {
+            assertSafeDbotXmlFile(file);
+        } catch (error) {
+            console.warn('DigitLab XML import rejected:', error);
+            return false;
+        }
 
         if (!is_body) {
-            if (file.name.includes('xml')) {
-                this.setLoadedLocalFile(file);
-                this.getDashboardStrategies();
-            } else {
-                return false;
-            }
+            this.setLoadedLocalFile(file);
+            this.getDashboardStrategies();
         }
         this.readFile(!is_body, event as DragEvent, file);
-        (event.target as HTMLInputElement).value = '';
+        if (event.target && 'value' in event.target) {
+            (event.target as HTMLInputElement).value = '';
+        }
         return true;
     };
 
@@ -433,6 +438,14 @@ export default class LoadModalStore {
         const file_name = file?.name.replace(/\.[^/.]+$/, '') || '';
 
         reader.onload = action(async e => {
+            try {
+                assertSafeDbotXmlText(e?.target?.result);
+            } catch (error) {
+                console.warn('DigitLab XML content rejected:', error);
+                this.setLoadedLocalFile(null);
+                this.setOpenButtonDisabled(false);
+                return;
+            }
             const load_options = {
                 block_string: e?.target?.result,
                 drop_event,
