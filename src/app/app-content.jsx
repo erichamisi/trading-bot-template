@@ -27,6 +27,7 @@ import '../components/bot-notification/bot-notification.scss';
 const AppContent = observer(() => {
     const [is_api_initialized, setIsApiInitialized] = React.useState(false);
     const [is_loading, setIsLoading] = React.useState(true);
+    const [startup_error, setStartupError] = React.useState(false);
 
     const store = useStore();
     const { app, transactions, common, client } = store;
@@ -117,29 +118,27 @@ const AppContent = observer(() => {
         });
     };
 
+    // Market data failure must not leave the entire application behind an endless spinner.
+    // Broker requests remain blocked by DigitLab's existing outbound trading policy.
     const changeActiveSymbolLoadingState = () => {
         init();
-
-        const retrieveActiveSymbols = () => {
-            const { active_symbols } = ApiHelpers.instance;
-
-            active_symbols.retrieveActiveSymbols(true).then(() => {
+        const activeSymbols = ApiHelpers?.instance?.active_symbols;
+        if (!activeSymbols) {
+            setStartupError(true);
+            setIsLoading(false);
+            return;
+        }
+        Promise.resolve()
+            .then(() => activeSymbols.retrieveActiveSymbols(true))
+            .then(() => {
+                setStartupError(false);
+                setIsLoading(false);
+            })
+            .catch(error => {
+                console.warn('DigitLab market data not available:', error);
+                setStartupError(true);
                 setIsLoading(false);
             });
-        };
-
-        if (ApiHelpers?.instance?.active_symbols) {
-            retrieveActiveSymbols();
-        } else {
-            // This is a workaround to fix the issue where the active symbols are not loaded immediately
-            // when the API is initialized. Should be replaced with RxJS pubsub
-            const intervalId = setInterval(() => {
-                if (ApiHelpers?.instance?.active_symbols) {
-                    clearInterval(intervalId);
-                    retrieveActiveSymbols();
-                }
-            }, 1000);
-        }
     };
 
     React.useEffect(() => {
@@ -160,6 +159,17 @@ const AppContent = observer(() => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [is_api_initialized, client.loginid]);
 
+    // The editor can remain accessible when the market socket is unavailable.
+    // We do not enable demo or real orders; network mutation controls stay fail-closed.
+    React.useEffect(() => {
+        if (!is_loading) return;
+        const timeout = setTimeout(() => {
+            setStartupError(true);
+            setIsLoading(false);
+        }, 12000);
+        return () => clearTimeout(timeout);
+    }, [is_loading]);
+
     if (common?.error) return null;
 
     return is_loading ? (
@@ -167,6 +177,14 @@ const AppContent = observer(() => {
     ) : (
         <AuthLoadingWrapper>
             <ThemeProvider theme={is_dark_mode_on ? 'dark' : 'light'}>
+                {startup_error && (
+                    <div role='status' style={{ padding: '12px 16px', background: '#fff1ce', color: '#3b2e12', fontSize: '14px' }}>
+                        Market connection is unavailable. Strategy editing may still work, but trading is disabled.
+                        <button type='button' style={{ marginLeft: '12px' }} onClick={() => window.location.reload()}>
+                            Retry connection
+                        </button>
+                    </div>
+                )}
                 <BlocklyLoading />
                 <div className='bot-dashboard bot' data-testid='dt_bot_dashboard'>
                     <Audio />
