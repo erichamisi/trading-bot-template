@@ -282,6 +282,11 @@ export default class LoadModalStore {
     resetBotBuilderStrategy = () => {
         const workspace = window.Blockly.derivWorkspace;
         if (workspace) {
+            try {
+                assertSafeDbotXmlText(workspace.cached_xml.main);
+            } catch {
+                return;
+            }
             window.Blockly.derivWorkspace.asyncClear();
             window.Blockly.Xml.domToWorkspace(window.Blockly.utils.xml.textToDom(workspace.cached_xml.main), workspace);
             window.Blockly.derivWorkspace.strategy_to_load = workspace.cached_xml.main;
@@ -323,6 +328,12 @@ export default class LoadModalStore {
     loadFileFromRecent = async () => {
         this.is_open_button_loading = true;
         if (!this.selected_strategy) {
+            try {
+                assertSafeDbotXmlText(window.Blockly.derivWorkspace.strategy_to_load);
+            } catch {
+                this.is_open_button_loading = false;
+                return;
+            }
             window.Blockly.derivWorkspace.asyncClear();
             window.Blockly.Xml.domToWorkspace(
                 window.Blockly.utils.xml.textToDom(window.Blockly.derivWorkspace.strategy_to_load),
